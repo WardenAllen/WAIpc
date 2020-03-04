@@ -1,0 +1,1 @@
+g++ -o "/root/projects/IPC/bin/x64/Debug/IPC.out" -Wl,--no-undefined -Wl,-z,relro -Wl,-z,now -Wl,-z,noexecstack /root/projects/IPC/obj/x64/Debug/main.o /root/projects/IPC/obj/x64/Debug/WAIpc.o -lpthread
