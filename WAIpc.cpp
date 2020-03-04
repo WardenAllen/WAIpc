@@ -1,6 +1,7 @@
 #include "WAIpc.h"
 
 static constexpr int WA_SHARED_MEMORY_KEY = 0x10000;
+static constexpr int WA_MESSAGE_QUEUE_KEY = 0x20000;
 
 WAIpc::CWASharedMemory::CWASharedMemory() :
 	m_Key(-1), m_Id(-1)
@@ -91,6 +92,67 @@ int WAIpc::CWASharedMemory::ShmGet(int Size, int Flag)
 
 	if (m_Id < 0) {
 		cout << "shmget() error!" << endl;
+		return -2;
+	}
+
+	return m_Id;
+}
+
+WAIpc::CWAMessageQueue::CWAMessageQueue() :
+	m_Key(-1), m_Id(-1)
+{
+}
+
+WAIpc::CWAMessageQueue::~CWAMessageQueue()
+{
+	if (m_Key > 0) msgctl(m_Id, IPC_RMID, NULL);
+}
+
+int WAIpc::CWAMessageQueue::CreateMessageQueue()
+{
+	return MsgGet(IPC_CREAT | IPC_EXCL | 0666);
+}
+
+int WAIpc::CWAMessageQueue::GetMessageQueue()
+{
+	return MsgGet(IPC_CREAT);
+}
+
+int WAIpc::CWAMessageQueue::SendMessage(int Type, int Size, char* Buf)
+{
+	msgbuf mb = { 0 };
+
+	mb.mtype = Type;
+	memcpy(mb.mtext, Buf, Size);
+
+	return msgsnd(m_Id, (void*)&mb, Size, 0);
+}
+
+int WAIpc::CWAMessageQueue::RecvMessage(int Type, int Size, char* Buf)
+{
+	msgbuf mb = { 0 };
+
+	if ((int)msgrcv(m_Id, &mb, Size, Type, IPC_NOWAIT) < 0)
+		return -1;
+
+	memcpy(Buf, mb.mtext, Size);
+
+	return 0;
+}
+
+int WAIpc::CWAMessageQueue::MsgGet(int Flag)
+{
+	m_Key = ftok("/tmp", WA_MESSAGE_QUEUE_KEY);
+
+	if (m_Key < 0) {
+		cout << "ftok() error!" << endl;
+		return -1;
+	}
+
+	m_Id = msgget(m_Key, Flag);
+
+	if (m_Id < 0) {
+		cout << "msgget() error!" << endl;
 		return -2;
 	}
 
