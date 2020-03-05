@@ -208,12 +208,18 @@ int WAIpcSystemV::CWASemaphoreArray::CreateSemaphoreArray(int SemNum)
 
 	*/
 
-	return SemGet(SemNum, IPC_CREAT | IPC_EXCL | 0666);
+	m_SemNum = SemNum;
+
+	if (SemGet(SemNum, IPC_CREAT | IPC_EXCL | 0666) < 0) return -1;
+
+	return SemInit();
 }
 
 int WAIpcSystemV::CWASemaphoreArray::GetSemaphoreArray(int SemNum)
 {
-	return SemGet(SemNum, 0);
+	if (SemGet(SemNum, 0) < 0) return -1;
+
+	return SemInit();
 }
 
 int WAIpcSystemV::CWASemaphoreArray::SemaphoreWait(int Op)
@@ -307,4 +313,25 @@ int WAIpcSystemV::CWASemaphoreArray::SemGet(int SemNum, int Flag)
 	}
 
 	return m_Id;
+}
+
+int WAIpcSystemV::CWASemaphoreArray::SemInit()
+{
+
+	/* must init before use. */
+
+	union semun
+	{
+		int val;
+		struct semid_ds* buf;
+		unsigned short* arry;
+	};
+
+	semun su;
+	su.val = 1;
+
+	for (int i = 0; i < m_SemNum; i++)
+		if (semctl(m_Id, 0, SETVAL, su) == -1) return -1;
+
+	return 0;
 }

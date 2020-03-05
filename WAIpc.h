@@ -80,8 +80,8 @@ namespace WAIpcSystemV {
 		~CWASemaphoreArray();
 
 	public:
-		int CreateSemaphoreArray(int SemNum);
-		int GetSemaphoreArray(int SemNum);
+		int CreateSemaphoreArray(int SemNum = 1);
+		int GetSemaphoreArray(int SemNum = 1);
 
 	public:
 		int SemaphoreWait(int Op = -1);
@@ -92,10 +92,12 @@ namespace WAIpcSystemV {
 
 	private:
 		int SemGet(int SemNum, int Flag);
+		int SemInit();
 
 	private:
 		key_t m_Key;
 		int m_Id;
+		int m_SemNum;
 
 	};
 
