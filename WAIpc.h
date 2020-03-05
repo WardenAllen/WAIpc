@@ -12,12 +12,29 @@ using namespace std;
 
 /* System V IPC */
 
-/* semaphore array */
-#include <sys/sem.h>
 /* shared memory */
 #include <sys/shm.h>
 /* message queue */
 #include <sys/msg.h>
+/* semaphore array */
+#include <sys/sem.h>
+
+/*	+-----------------+---------------+---------------+---------------+
+ *	|				  | Message Queue |	  Semaphore   | Shared Memory |
+ *	+=================+===============+===============+===============+
+ *	| Headers		  | <sys/msg.h>   | <sys/sem.h>	  | <sys/shm.h>	  |
+ *	+-----------------+---------------+---------------+---------------+
+ *  | Create / Open   | msgget()	  | semget()	  | shmget()	  |
+ *	+-----------------+---------------+---------------+---------------+
+ *  | Control	      | msgctl()	  | semctl()	  | shmctl()	  |
+ *	+-----------------+---------------+---------------+---------------+
+ *  | Operation		  | msgsnd()	  | semop()		  | shmat()		  |
+ *  |				  |				  |				  |				  |
+ *  |                 | msgrsv()	  |				  | shmdt()	      |
+ *	+-----------------+---------------+---------------+---------------+
+ *							      SystemV IPC
+ *
+ */
 
 namespace WAIpcSystemV {
 
@@ -105,6 +122,29 @@ namespace WAIpcSystemV {
 
 /* POSIX IPC */
 
+/* mmap */
+#include <sys/mman.h>
 /* semaphore */
 #include <semaphore.h>	
+/* message queue */
+#include <mqueue.h>
+
+namespace WAIpcPOSIX {
+
+	class CWAMmap {
+
+	public:
+		CWAMmap();
+		~CWAMmap();
+
+	public:
+		void* CreateMmapFd(int Fd, int Len, int Prot, int Flags, int Offset = 0, void* Addr = nullptr);
+		void* CreateMmapDevZero(int Len, int Prot, int Flags, int Offset = 0, void* Addr = nullptr);
+		void* CreateMmapNULL(int Len, int Prot, int Flags, int Offset = 0, void* Addr = nullptr);
+
+	};
+
+}
+
+
 

@@ -1,4 +1,4 @@
-#include "WAIpc.h"
+﻿#include "WAIpc.h"
 
 static constexpr int WA_SHARED_MEMORY_KEY = 0x10000;
 static constexpr int WA_MESSAGE_QUEUE_KEY = 0x20000;
@@ -174,37 +174,37 @@ int WAIpcSystemV::CWASemaphoreArray::CreateSemaphoreArray(int SemNum)
 {
 	/*
 
-	�ں�Ϊÿ���ź�������������һ��semid_ds�ṹ
+	内核为每个信号量集合设置了一个semid_ds结构
 	struct semid_ds {
 		struct ipc_permsem_perm;
-		structsem* sem_base;	//�ź�����ָ��
-		ushort sem_nsem;		//�˼����źŸ���
-		time_t sem_otime;		//���һ��semopʱ��
-		time_t sem_ctime;		//���һ�δ���ʱ��
+		structsem* sem_base;	//信号数组指针
+		ushort sem_nsem;		//此集中信号个数
+		time_t sem_otime;		//最后一次semop时间
+		time_t sem_ctime;		//最后一次创建时间
 	};
 
-	ÿ���ź�����һ�������ṹ��ʾ,�����ٰ������г�Ա��
+	每个信号量由一个无名结构表示,它至少包含下列成员：
 		struct {
-		ushort_t semval;		//�ź�����ֵ
-		short sempid;			//���һ������semop�Ľ���ID
-		ushort semncnt;			//�ȴ����ź���ֵ���ڵ�ǰֵ�Ľ�����(һ�н����ͷ���Դ �ͱ�����)
-		ushort semzcnt;			//�ȴ����ź���ֵ����0�Ľ�����
+		ushort_t semval;		//信号量的值
+		short sempid;			//最后一个调用semop的进程ID
+		ushort semncnt;			//等待该信号量值大于当前值的进程数(一有进程释放资源 就被唤醒)
+		ushort semzcnt;			//等待该信号量值等于0的进程数
 	};
 
 	int semctl (int semid, int semnum, int cmd, ... );
-	���ĸ������ǿ�ѡ��,ȡ���ڵ���������cmd��
-		����semnumָ���źż��е��ĸ��ź�(��������)
-		����cmdָ������10�������е�һ��, ��semidָ�����ź���������ִ�д����
-		IPC_STAT	��ȡһ���ź����������ݽṹsemid_ds,������洢��semun�е�buf�����С�
-		IPC_SET     �����ź����������ݽṹsemid_ds�е�Ԫ��ipc_perm,��ֵȡ��semun�е�buf������
-		IPC_RMID	���ź��������ڴ���ɾ����
-		GETALL      ���ڶ�ȡ�ź������е������ź�����ֵ��
-		GETNCNT		�������ڵȴ���Դ�Ľ�����Ŀ��
-		GETPID      �������һ��ִ��semop�����Ľ��̵�PID��
-		GETVAL      �����ź������е�һ���������ź�����ֵ��
-		GETZCNT		�������ڵȴ���ȫ���е���Դ�Ľ�����Ŀ��
-		SETALL		�����ź������е����е��ź�����ֵ��
-		SETVAL      �����ź������е�һ���������ź�����ֵ��
+	第四个参数是可选的,取决于第三个参数cmd。
+		参数semnum指定信号集中的哪个信号(操作对象)
+		参数cmd指定以下10种命令中的一种, 在semid指定的信号量集合上执行此命令。
+		IPC_STAT	读取一个信号量集的数据结构semid_ds,并将其存储在semun中的buf参数中。
+		IPC_SET     设置信号量集的数据结构semid_ds中的元素ipc_perm,其值取自semun中的buf参数。
+		IPC_RMID	将信号量集从内存中删除。
+		GETALL      用于读取信号量集中的所有信号量的值。
+		GETNCNT		返回正在等待资源的进程数目。
+		GETPID      返回最后一个执行semop操作的进程的PID。
+		GETVAL      返回信号量集中的一个单个的信号量的值。
+		GETZCNT		返回这在等待完全空闲的资源的进程数目。
+		SETALL		设置信号量集中的所有的信号量的值。
+		SETVAL      设置信号量集中的一个单独的信号量的值。
 
 	*/
 
@@ -233,35 +233,35 @@ int WAIpcSystemV::CWASemaphoreArray::SemaphoreWait(int Op)
 		short sem_flg;              operation flags
 	};
 	
-	sem_num���������ź������ĵڼ���Ԫ��,��0��ʼ
+	sem_num标明它是信号量集的第几个元素,从0开始
 
-	sem_opָ���ź�����ȡ�Ĳ���
-		<0�൱��P����,ռ����Դ
-		>0�൱��V����,�ͷ���Դ
-		=0����˯��ֱ���ź�����ֵΪ0
+	sem_op指定信号量采取的操作
+		<0相当于P操作,占有资源
+		>0相当于V操作,释放资源
+		=0进程睡眠直到信号量的值为0
 
-	sem_flgָ��������ִ��ģʽ,������־λ��
-		һ����IPC_NOWAIT,ָ���Է�������ʽ�����ź�����
-		һ����SEM_UNDO,ָ���ں�Ϊ�ź������������ָ�ֵ��
-		ͨ��ΪSEM_UNDO,ʹ����ϵͳ�����ź�
-		SEM_UNDO���ڽ��޸ĵ��ź���ֵ�ڽ��������˳�(����exit�˳���mainִ����)
-		���쳣�˳�(����쳣, ��0�쳣, �յ�KILL�źŵ�)ʱ�黹���ź�����
-����		���ź�����ʼֵ��20,������SEM_UNDO��ʽ�����ź�����2,��5,��1;
-		�ڽ���δ�˳�ʱ,�ź������20-2-5+1=14;�ڽ����˳�ʱ,���޸ĵ�ֵ�黹���ź���,�ź������14+2+5-1=20��
+	sem_flg指明操作的执行模式,两个标志位。
+		一个是IPC_NOWAIT,指明以非阻塞方式操作信号量。
+		一个是SEM_UNDO,指明内核为信号量操作保留恢复值。
+		通常为SEM_UNDO,使操作系统跟踪信号
+		SEM_UNDO用于将修改的信号量值在进程正常退出(调用exit退出或main执行完)
+		或异常退出(如段异常, 除0异常, 收到KILL信号等)时归还给信号量。
+　　		如信号量初始值是20,进程以SEM_UNDO方式操作信号量减2,减5,加1;
+		在进程未退出时,信号量变成20-2-5+1=14;在进程退出时,将修改的值归还给信号量,信号量变成14+2+5-1=20。
 
-	����nops�涨opsptr������Ԫ�ظ�����
+	参数nops规定opsptr数组中元素个数。
 
-	sem_opֵ��
-		(1)��sem_opΪ��,���Ӧ�ڽ����ͷ�ռ�õ���Դ����sem_opֵ�ӵ��ź�����ֵ�ϡ�(V����)
-		(2)��sem_opΪ��, ���ʾҪ��ȡ���ź������Ƶ���Դ�����ź���ֵ��ȥsem_op�ľ���ֵ��(P����)
-		(3)��sem_opΪ0, ���ʾ���ý���ϣ���ȴ������ź���ֵ���0
+	sem_op值：
+		(1)若sem_op为正,这对应于进程释放占用的资源数。sem_op值加到信号量的值上。(V操作)
+		(2)若sem_op为负, 这表示要获取该信号量控制的资源数。信号量值减去sem_op的绝对值。(P操作)
+		(3)若sem_op为0, 这表示调用进程希望等待到该信号量值变成0
 
-	����ź���ֵС��sem_op�ľ���ֵ(��Դ��������Ҫ��),��
-		(1)��ָ����IPC_NOWAIT,��semop()��������EAGAIN��
-		(2)��δָ��IPC_NOWAIT,���ź�����semncntֵ��1(��Ϊ���ý��̽��� ������״̬),Ȼ����ý��̱�����ֱ����
-			�ٴ��ź�����ɴ��ڻ����sem_op�ľ���ֵ;
-			�ڴ�ϵͳ��ɾ���˴��ź���,����EIDRM;
-			�۽��̲�׽��һ���ź�,�����źŴ������򷵻�,����EINTR��(����Ϣ���е�����������ʽ ������)
+	如果信号量值小于sem_op的绝对值(资源不能满足要求),则：
+		(1)若指定了IPC_NOWAIT,则semop()出错返回EAGAIN。
+		(2)若未指定IPC_NOWAIT,则信号量的semncnt值加1(因为调用进程将进 入休眠状态),然后调用进程被挂起直至：
+			①此信号量变成大于或等于sem_op的绝对值;
+			②从系统中删除了此信号量,返回EIDRM;
+			③进程捕捉到一个信号,并从信号处理程序返回,返回EINTR。(与消息队列的阻塞处理方式 很相似)
 	
 	*/
 
@@ -270,9 +270,9 @@ int WAIpcSystemV::CWASemaphoreArray::SemaphoreWait(int Op)
 	/*
 	 *	int semop(int sem_id, struct sembuf* sops, size_t nsops);
 	 *		
-	 *		semid	�ź������ı�ʶ��
-	 *		sops	�����ṹ��������, ÿ�� sembuf �ṹ���Ӧһ���ض��źŵĲ���
-	 *		nsops	���в������źŵĸ���
+	 *		semid	信号量集的标识符
+	 *		sops	操作结构体数组中, 每个 sembuf 结构体对应一个特定信号的操作
+	 *		nsops	进行操作的信号的个数
 	 */
 
 	return semop(m_Id, &semb, 1);
@@ -334,4 +334,65 @@ int WAIpcSystemV::CWASemaphoreArray::SemInit()
 		if (semctl(m_Id, 0, SETVAL, su) == -1) return -1;
 
 	return 0;
+}
+
+WAIpcPOSIX::CWAMmap::CWAMmap()
+{
+}
+
+WAIpcPOSIX::CWAMmap::~CWAMmap()
+{
+}
+
+void* WAIpcPOSIX::CWAMmap::CreateMmapFd(int Fd, int Len, int Prot, int Flags, int Offset, void* Addr)
+{
+
+	/*
+
+	void *mmap(void *addr, size_t length, int prot, int flags, int fd, off_t offset);
+
+	该函数主要用途有三个:
+		(1) 将普通文件映射到内存中，通常在需要对文件进行频繁读写时使用，用内存读写取代I / O读写，以获得较高的性能；
+		(2) 将特殊文件进行匿名内存映射，为关联进程提供共享内存空间；
+		(3) 为无关联的进程间的Posix共享内存（SystemV的共享内存操作是shmget / shmat）
+	
+	1. addr 指向欲映射的内存起始地址，通常设为 NULL，代表让系统自动选定地址，映射成功后返回该地址。
+
+	2. length 代表将文件中多大的部分映射到内存。
+
+	3. prot: 映射区域的保护方式。可以为以下几种方式的组合：
+		PROT_EXEC	映射区域可被执行
+		PROT_READ	映射区域可被读取
+		PROT_WRITE	映射区域可被写入
+		PROT_NONE	映射区域不能存取
+
+	4. flags: 影响映射区域的各种特性。在调用mmap()时必须要指定MAP_SHARED 或MAP_PRIVATE。
+		MAP_FIXED		如果参数start所指的地址无法成功建立映射时，则放弃映射，不对地址做修正。通常不鼓励用此。
+		MAP_SHARED		对映射区域的写入数据会复制回文件内，而且允许其他映射该文件的进程共享。
+		MAP_PRIVATE		对映射区域的写入操作会产生一个映射文件的复制，即私人的“写入时复制”（copy on write）对此区域作的任何修改都不会写回原来的文件内容。
+		MAP_ANONYMOUS	建立匿名映射。此时会忽略参数fd，不涉及文件，而且映射区域无法和其他进程共享。
+		MAP_DENYWRITE	只允许对映射区域的写入操作，其他对文件直接写入的操作将会被拒绝。
+		MAP_LOCKED		将映射区域锁定住，这表示该区域不会被置换（swap）。
+
+	5. fd: 要映射到内存中的文件描述符。如果使用匿名内存映射时，即flags中设置了MAP_ANONYMOUS，fd设为 - 1。
+	
+	6. offset: 文件映射的偏移量，通常设置为0，代表从文件最前方开始对应，offset必须是分页大小的整数倍。
+
+	*/
+
+	return mmap(Addr, Len, Prot, Flags, Fd, Offset);
+}
+
+void* WAIpcPOSIX::CWAMmap::CreateMmapDevZero(int Len, int Prot, int Flags, int Offset, void* Addr)
+{
+	int fd = open("/dev/zero", O_RDWR);
+
+	if (fd < 0) return nullptr;
+
+	return mmap(Addr, Len, Prot, Flags, fd, Offset);
+}
+
+void* WAIpcPOSIX::CWAMmap::CreateMmapNULL(int Len, int Prot, int Flags, int Offset, void* Addr)
+{
+	return mmap(Addr, Len, Prot, Flags, -1, Offset);
 }
