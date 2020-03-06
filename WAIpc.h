@@ -42,16 +42,17 @@ namespace WAIpcSystemV {
 	class CWASharedMemory {
 
 	public:
-		CWASharedMemory();
+		CWASharedMemory(bool Destroy = false);
 		~CWASharedMemory();
 
 	public:
-		int CreateSharedMemory(int Size);
-		int GetSharedMemory(int Size);
+		int CreateShm(int Size);
+		int GetShm(int Size);
+		int DestroyShm();
 
 	public:
-		void* AttachSharedMemory();
-		int DetachSharedMemory(void* ShmAddr);
+		void* AttachShm();
+		int DetachShm(void* ShmAddr);
 
 	private:
 		int ShmGet(int Size, int Flag);
@@ -59,6 +60,7 @@ namespace WAIpcSystemV {
 	private:
 		key_t m_Key;
 		int m_Id;
+		bool m_Destroy;
 
 	};
 
@@ -71,12 +73,13 @@ namespace WAIpcSystemV {
 	class CWAMessageQueue {
 
 	public:
-		CWAMessageQueue();
+		CWAMessageQueue(bool Destroy = false);
 		~CWAMessageQueue();
 
 	public:
-		int CreateMessageQueue();
-		int GetMessageQueue();
+		int CreateMQ();
+		int GetMQ();
+		int DestroyMQ();
 
 	public:
 		int SendMessage(int Type, int Size, char* Buf);
@@ -88,22 +91,24 @@ namespace WAIpcSystemV {
 	private:
 		key_t m_Key;
 		int m_Id;
+		bool m_Destroy;
 
 	};
 
 	class CWASemaphoreArray {
 
 	public:
-		CWASemaphoreArray();
+		CWASemaphoreArray(bool Destroy = false);
 		~CWASemaphoreArray();
 
 	public:
-		int CreateSemaphoreArray(int SemNum = 1);
-		int GetSemaphoreArray(int SemNum = 1);
+		int CreateSemAry(int SemNum = 1);
+		int GetSemAry(int SemNum = 1);
+		int DestroySemAry();
 
 	public:
-		int SemaphoreWait(int Op = -1);
-		int SemaphoreRelease(int Op = 1);
+		int SemWait(int Op = -1);
+		int SemRelease(int Op = 1);
 
 		int SemAryWait(int Index, int Op = -1);
 		int SemAryRelease(int Index, int Op = 1);
@@ -116,6 +121,7 @@ namespace WAIpcSystemV {
 		key_t m_Key;
 		int m_Id;
 		int m_SemNum;
+		bool m_Destroy;
 
 	};
 
@@ -169,14 +175,15 @@ namespace WAIpcPOSIX {
 	class CWAMmap {
 
 	public:
-		CWAMmap();
+		CWAMmap(bool Destroy = false);
 		~CWAMmap();
 
 	public:
 
 		/* name must begin with '/' */
-		int CreateSharedMemory(const char* Name, int Size);
-		int GetSharedMemory(const char* Name);
+		int CreateShm(const char* Name, int Size);
+		int GetShm(const char* Name);
+		int UnlinkShm();
 
 		void* CreateMmapFd(int Fd, int Len, 
 			int Prot = PROT_READ | PROT_WRITE, 
@@ -203,6 +210,7 @@ namespace WAIpcPOSIX {
 		int m_Len;
 		void* m_Addr;
 		string m_Name;
+		bool m_Destroy;
 
 	};
 

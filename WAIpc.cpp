@@ -8,27 +8,32 @@ static constexpr int WA_SYSTEM_V_SHARED_MEMORY_KEY = 0x10000;
 static constexpr int WA_MESSAGE_QUEUE_KEY = 0x20000;
 static constexpr int WA_SEMAPHORE_ARRAY_KEY = 0x40000;
 
-WAIpcSystemV::CWASharedMemory::CWASharedMemory() :
-	m_Key(-1), m_Id(-1)
+WAIpcSystemV::CWASharedMemory::CWASharedMemory(bool Destroy) :
+	m_Key(-1), m_Id(-1), m_Destroy(Destroy)
 {
 }
 
 WAIpcSystemV::CWASharedMemory::~CWASharedMemory()
 {
-	if (m_Key > 0) shmctl(m_Id, IPC_RMID, NULL);
+	if (m_Key > 0 && m_Destroy) DestroyShm();
 }
 
-int WAIpcSystemV::CWASharedMemory::CreateSharedMemory(int Size)
+int WAIpcSystemV::CWASharedMemory::CreateShm(int Size)
 {
 	return ShmGet(Size, IPC_CREAT | IPC_EXCL | 0666);
 }
 
-int WAIpcSystemV::CWASharedMemory::GetSharedMemory(int Size)
+int WAIpcSystemV::CWASharedMemory::GetShm(int Size)
 {
 	return ShmGet(Size, IPC_CREAT | 0666);
 }
 
-void* WAIpcSystemV::CWASharedMemory::AttachSharedMemory()
+int WAIpcSystemV::CWASharedMemory::DestroyShm()
+{
+	return shmctl(m_Id, IPC_RMID, NULL);
+}
+
+void* WAIpcSystemV::CWASharedMemory::AttachShm()
 {
 	/*
 
@@ -73,7 +78,7 @@ void* WAIpcSystemV::CWASharedMemory::AttachSharedMemory()
 	return shmat(m_Id, NULL, 0);
 }
 
-int WAIpcSystemV::CWASharedMemory::DetachSharedMemory(void* ShmAddr)
+int WAIpcSystemV::CWASharedMemory::DetachShm(void* ShmAddr)
 {
 	return shmdt(ShmAddr);
 }
@@ -103,24 +108,29 @@ int WAIpcSystemV::CWASharedMemory::ShmGet(int Size, int Flag)
 	return m_Id;
 }
 
-WAIpcSystemV::CWAMessageQueue::CWAMessageQueue() :
-	m_Key(-1), m_Id(-1)
+WAIpcSystemV::CWAMessageQueue::CWAMessageQueue(bool Destroy) :
+	m_Key(-1), m_Id(-1), m_Destroy(Destroy)
 {
 }
 
 WAIpcSystemV::CWAMessageQueue::~CWAMessageQueue()
 {
-	if (m_Key > 0) msgctl(m_Id, IPC_RMID, NULL);
+	if (m_Key > 0 && m_Destroy) DestroyMQ();
 }
 
-int WAIpcSystemV::CWAMessageQueue::CreateMessageQueue()
+int WAIpcSystemV::CWAMessageQueue::CreateMQ()
 {
 	return MsgGet(IPC_CREAT | IPC_EXCL | 0666);
 }
 
-int WAIpcSystemV::CWAMessageQueue::GetMessageQueue()
+int WAIpcSystemV::CWAMessageQueue::GetMQ()
 {
 	return MsgGet(IPC_CREAT);
+}
+
+int WAIpcSystemV::CWAMessageQueue::DestroyMQ()
+{
+	return msgctl(m_Id, IPC_RMID, NULL);
 }
 
 int WAIpcSystemV::CWAMessageQueue::SendMessage(int Type, int Size, char* Buf)
@@ -164,17 +174,17 @@ int WAIpcSystemV::CWAMessageQueue::MsgGet(int Flag)
 	return m_Id;
 }
 
-WAIpcSystemV::CWASemaphoreArray::CWASemaphoreArray() :
-	m_Key(-1), m_Id(-1)
+WAIpcSystemV::CWASemaphoreArray::CWASemaphoreArray(bool Destroy) :
+	m_Key(-1), m_Id(-1), m_Destroy(Destroy)
 {
 }
 
 WAIpcSystemV::CWASemaphoreArray::~CWASemaphoreArray()
 {
-	semctl(m_Id, 0, IPC_RMID);
+	if (m_Destroy) DestroySemAry();
 }
 
-int WAIpcSystemV::CWASemaphoreArray::CreateSemaphoreArray(int SemNum)
+int WAIpcSystemV::CWASemaphoreArray::CreateSemAry(int SemNum)
 {
 	/*
 
@@ -219,14 +229,19 @@ int WAIpcSystemV::CWASemaphoreArray::CreateSemaphoreArray(int SemNum)
 	return SemInit();
 }
 
-int WAIpcSystemV::CWASemaphoreArray::GetSemaphoreArray(int SemNum)
+int WAIpcSystemV::CWASemaphoreArray::GetSemAry(int SemNum)
 {
 	if (SemGet(SemNum, 0) < 0) return -1;
 
 	return SemInit();
 }
 
-int WAIpcSystemV::CWASemaphoreArray::SemaphoreWait(int Op)
+int WAIpcSystemV::CWASemaphoreArray::DestroySemAry()
+{
+	return semctl(m_Id, 0, IPC_RMID);
+}
+
+int WAIpcSystemV::CWASemaphoreArray::SemWait(int Op)
 {
 	/*
 
@@ -282,7 +297,7 @@ int WAIpcSystemV::CWASemaphoreArray::SemaphoreWait(int Op)
 	return semop(m_Id, &semb, 1);
 }
 
-int WAIpcSystemV::CWASemaphoreArray::SemaphoreRelease(int Op)
+int WAIpcSystemV::CWASemaphoreArray::SemRelease(int Op)
 {
 	sembuf semb = { 0, (short)Op, (short)SEM_UNDO };
 	return semop(m_Id, &semb, 1);
@@ -345,8 +360,9 @@ int WAIpcSystemV::CWASemaphoreArray::SemInit()
 /****************************************************************/
 
 
-WAIpcPOSIX::CWAMmap::CWAMmap() :
-	m_Fd(-1), m_Len(0), m_Addr(nullptr), m_Name("")
+WAIpcPOSIX::CWAMmap::CWAMmap(bool Destroy) :
+	m_Fd(-1), m_Len(0), m_Addr(nullptr), m_Name(""),
+	m_Destroy(Destroy)
 {
 }
 
@@ -356,10 +372,10 @@ WAIpcPOSIX::CWAMmap::~CWAMmap()
 
 	if (m_Addr != nullptr) munmap(m_Addr, m_Len);
 
-	if (m_Name != "") shm_unlink(m_Name.c_str());
+	if (m_Name != "" && m_Destroy) UnlinkShm();
 }
 
-int WAIpcPOSIX::CWAMmap::CreateSharedMemory(const char* Name, int Size)
+int WAIpcPOSIX::CWAMmap::CreateShm(const char* Name, int Size)
 {
 	m_Fd = ShmOpen(Name, O_CREAT | O_RDWR | O_EXCL);
 	m_Name = Name;
@@ -369,11 +385,16 @@ int WAIpcPOSIX::CWAMmap::CreateSharedMemory(const char* Name, int Size)
 	return m_Fd;
 }
 
-int WAIpcPOSIX::CWAMmap::GetSharedMemory(const char* Name)
+int WAIpcPOSIX::CWAMmap::GetShm(const char* Name)
 {
 	m_Fd = ShmOpen(Name, O_RDWR);
 	m_Name = Name;
 	return m_Fd;
+}
+
+int WAIpcPOSIX::CWAMmap::UnlinkShm()
+{
+	return shm_unlink(m_Name.c_str());
 }
 
 void* WAIpcPOSIX::CWAMmap::CreateMmapFd(int Fd, int Len, int Prot, int Flags, int Offset, void* Addr)
