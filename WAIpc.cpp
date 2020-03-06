@@ -1,6 +1,10 @@
 ﻿#include "WAIpc.h"
 
-static constexpr int WA_SHARED_MEMORY_KEY = 0x10000;
+/****************************************************************/
+/************************* System V *****************************/
+/****************************************************************/
+
+static constexpr int WA_SYSTEM_V_SHARED_MEMORY_KEY = 0x10000;
 static constexpr int WA_MESSAGE_QUEUE_KEY = 0x20000;
 static constexpr int WA_SEMAPHORE_ARRAY_KEY = 0x40000;
 
@@ -76,7 +80,7 @@ int WAIpcSystemV::CWASharedMemory::DetachSharedMemory(void* ShmAddr)
 
 int WAIpcSystemV::CWASharedMemory::ShmGet(int Size, int Flag)
 {
-	m_Key = ftok("/tmp", WA_SHARED_MEMORY_KEY);
+	m_Key = ftok("/tmp", WA_SYSTEM_V_SHARED_MEMORY_KEY);
 
 	if (m_Key < 0) {
 		cout << "ftok() error!" << endl;
@@ -265,7 +269,7 @@ int WAIpcSystemV::CWASemaphoreArray::SemaphoreWait(int Op)
 	
 	*/
 
-	sembuf semb = {0, Op, SEM_UNDO};
+	sembuf semb = {0, (short)Op, (short int)SEM_UNDO};
 
 	/*
 	 *	int semop(int sem_id, struct sembuf* sops, size_t nsops);
@@ -280,19 +284,19 @@ int WAIpcSystemV::CWASemaphoreArray::SemaphoreWait(int Op)
 
 int WAIpcSystemV::CWASemaphoreArray::SemaphoreRelease(int Op)
 {
-	sembuf semb = { 0, Op, SEM_UNDO };
+	sembuf semb = { 0, (short)Op, (short)SEM_UNDO };
 	return semop(m_Id, &semb, 1);
 }
 
 int WAIpcSystemV::CWASemaphoreArray::SemAryWait(int Index, int Op)
 {
-	sembuf semb = { Index, Op, SEM_UNDO };
+	sembuf semb = { (unsigned short)Index, (short)Op, (short int)SEM_UNDO };
 	return semop(m_Id, &semb, 1);
 }
 
 int WAIpcSystemV::CWASemaphoreArray::SemAryRelease(int Index, int Op)
 {
-	sembuf semb = { Index, Op, SEM_UNDO };
+	sembuf semb = { (unsigned short)Index, (short)Op, (short int)SEM_UNDO };
 	return semop(m_Id, &semb, 1);
 }
 
@@ -336,12 +340,40 @@ int WAIpcSystemV::CWASemaphoreArray::SemInit()
 	return 0;
 }
 
-WAIpcPOSIX::CWAMmap::CWAMmap()
+/****************************************************************/
+/*************************** POSIX ******************************/
+/****************************************************************/
+
+
+WAIpcPOSIX::CWAMmap::CWAMmap() :
+	m_Fd(-1), m_Len(0), m_Addr(nullptr), m_Name("")
 {
 }
 
 WAIpcPOSIX::CWAMmap::~CWAMmap()
 {
+	if (m_Fd > 0) ::close(m_Fd);
+
+	if (m_Addr != nullptr) munmap(m_Addr, m_Len);
+
+	if (m_Name != "") shm_unlink(m_Name.c_str());
+}
+
+int WAIpcPOSIX::CWAMmap::CreateSharedMemory(const char* Name, int Size)
+{
+	m_Fd = ShmOpen(Name, O_CREAT | O_RDWR | O_EXCL);
+	m_Name = Name;
+
+	if (m_Fd > 0) ftruncate(m_Fd, Size);
+
+	return m_Fd;
+}
+
+int WAIpcPOSIX::CWAMmap::GetSharedMemory(const char* Name)
+{
+	m_Fd = ShmOpen(Name, O_RDWR);
+	m_Name = Name;
+	return m_Fd;
 }
 
 void* WAIpcPOSIX::CWAMmap::CreateMmapFd(int Fd, int Len, int Prot, int Flags, int Offset, void* Addr)
@@ -380,19 +412,33 @@ void* WAIpcPOSIX::CWAMmap::CreateMmapFd(int Fd, int Len, int Prot, int Flags, in
 
 	*/
 
-	return mmap(Addr, Len, Prot, Flags, Fd, Offset);
+	m_Fd = Fd;
+	m_Len = Len;
+	m_Addr = mmap(Addr, Len, Prot, Flags, Fd, Offset);
+
+	return m_Addr;
 }
 
 void* WAIpcPOSIX::CWAMmap::CreateMmapDevZero(int Len, int Prot, int Flags, int Offset, void* Addr)
 {
-	int fd = open("/dev/zero", O_RDWR);
+	m_Fd = open("/dev/zero", O_RDWR);
+	if (m_Fd < 0) return nullptr;
 
-	if (fd < 0) return nullptr;
+	m_Len = Len;
+	m_Addr = mmap(Addr, Len, Prot, Flags, m_Fd, Offset);
 
-	return mmap(Addr, Len, Prot, Flags, fd, Offset);
+	return m_Addr;
 }
 
 void* WAIpcPOSIX::CWAMmap::CreateMmapNULL(int Len, int Prot, int Flags, int Offset, void* Addr)
 {
-	return mmap(Addr, Len, Prot, Flags, -1, Offset);
+	m_Len = Len;
+	m_Addr = mmap(Addr, Len, Prot, Flags, -1, Offset);
+
+	return m_Addr;
+}
+
+int WAIpcPOSIX::CWAMmap::ShmOpen(const char* Name, int Flag)
+{
+	return shm_open(Name, Flag, 0666);
 }

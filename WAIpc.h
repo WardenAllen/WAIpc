@@ -5,7 +5,7 @@
 using namespace std;
 
 #include <string.h>
-//#include <unistd.h>
+#include <unistd.h>
 #include <fcntl.h>
 
 #include <sys/ipc.h>
@@ -164,6 +164,8 @@ namespace WAIpcSystemV {
 
 namespace WAIpcPOSIX {
 
+	/* mmap() can be used for shared memory or mapping files. */
+
 	class CWAMmap {
 
 	public:
@@ -171,9 +173,35 @@ namespace WAIpcPOSIX {
 		~CWAMmap();
 
 	public:
-		void* CreateMmapFd(int Fd, int Len, int Prot, int Flags, int Offset = 0, void* Addr = nullptr);
-		void* CreateMmapDevZero(int Len, int Prot, int Flags, int Offset = 0, void* Addr = nullptr);
-		void* CreateMmapNULL(int Len, int Prot, int Flags, int Offset = 0, void* Addr = nullptr);
+
+		int CreateSharedMemory(const char* Name, int Size);
+		int GetSharedMemory(const char* Name);
+
+		void* CreateMmapFd(int Fd, int Len, 
+			int Prot = PROT_READ | PROT_WRITE, 
+			int Flags = MAP_SHARED, 
+			int Offset = 0, void* Addr = nullptr);
+
+		/* address is valid when mmap() is called before fork(). */
+
+		void* CreateMmapDevZero(int Len, 
+			int Prot = PROT_READ | PROT_WRITE,
+			int Flags = MAP_SHARED, 
+			int Offset = 0, void* Addr = nullptr);
+
+		void* CreateMmapNULL(int Len, 
+			int Prot = PROT_READ | PROT_WRITE,
+			int Flags = MAP_SHARED, 
+			int Offset = 0, void* Addr = nullptr);
+
+	private:
+		int ShmOpen(const char* Name, int Flag);
+
+	private:
+		int m_Fd;
+		int m_Len;
+		void* m_Addr;
+		string m_Name;
 
 	};
 
