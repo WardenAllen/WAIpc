@@ -19,7 +19,8 @@ using namespace std;
 /* semaphore array */
 #include <sys/sem.h>
 
-/*	+-----------------+---------------+---------------+---------------+
+/*
+ *  +-----------------+---------------+---------------+---------------+
  *	|				  | Message Queue |	  Semaphore   | Shared Memory |
  *	+=================+===============+===============+===============+
  *	| Headers		  | <sys/msg.h>   | <sys/sem.h>	  | <sys/shm.h>	  |
@@ -32,8 +33,8 @@ using namespace std;
  *  |				  |				  |				  |				  |
  *  |                 | msgrsv()	  |				  | shmdt()	      |
  *	+-----------------+---------------+---------------+---------------+
- *							      SystemV IPC
  *
+ *							     SystemV IPC
  */
 
 namespace WAIpcSystemV {
@@ -121,6 +122,38 @@ namespace WAIpcSystemV {
 };
 
 /* POSIX IPC */
+
+/*
+ *  +-----------------------+---------------+---------------+---------------+
+ *	|						| Message Queue |   Semaphore   | Shared Memory |
+ *	+=======================+===============+===============+===============+
+ *	| Headers				| <mqueue.h>    | <semaphore.h> | <sys/mman.h>  |
+ *	+-----------------------+---------------+---------------+---------------+
+ *  | Create / Open / Close | mq_open()	    | sem_open()	| shm_open()	|
+ *	|						| 				|				|				|
+ *	|						| mq_close()    | sem_close()	| shm_unlink()	|
+ *	|						| 				|				|				|
+ *	|						| mq_unlink()	| sem_unlink()	|				|
+ *	|						|				|---------------|				|
+ *	|						|				| sem_init()	|				|
+ *	|						|				|				|				|
+ *	|						|				| sem_destroy()	|				|
+ *	+-----------------------+---------------+---------------+---------------+
+ *  | Control				| mq_getattr()	| 				| ftruncate()	|
+ *	|						|				|				|				|
+ *	|						| mq_setattr()	|				| fstat()		|
+ *	+-----------------------+---------------+---------------+---------------+
+ *  | Operation				| mq_send()		| sem_wait()	| mmap()		|
+ *  |						|				|				|				|
+ *  |						| mq_receive()	| sem_trywait()	| munmap()		|
+ *  |						|				|				|				|
+ *  |						| mq_notify()	| sem_post()	|				|
+ *  |						|				|				|				|
+ *  |						|				| sem_getvalue()|				|
+ *  +-----------------------+---------------+---------------+---------------+
+ *
+ *							       POSIX IPC
+ */
 
 /* mmap */
 #include <sys/mman.h>
