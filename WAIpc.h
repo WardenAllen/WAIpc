@@ -174,6 +174,7 @@ namespace WAIpcPOSIX {
 
 	public:
 
+		/* name must begin with '/' */
 		int CreateSharedMemory(const char* Name, int Size);
 		int GetSharedMemory(const char* Name);
 
@@ -202,6 +203,52 @@ namespace WAIpcPOSIX {
 		int m_Len;
 		void* m_Addr;
 		string m_Name;
+
+	};
+
+	class CWAMQueue {
+
+	public:
+		CWAMQueue();
+		~CWAMQueue();
+
+
+	};
+
+	class CWASemaphore {
+
+	public:
+		CWASemaphore(bool Destroy = false);
+		~CWASemaphore();
+
+	public:
+		/* used for single process multi thread or child process. */
+		/* also called memory semaphore. */
+		int CreateUnnamedSem(int Shared = 0, int Value = 1);
+
+		/* used for ipc. value less than SEM_VALUE_MAX(32767). */
+		/* name must begin with '/' */
+		int CreateNamedSem(const char* Name, int Value, 
+			int Flag = O_CREAT | O_EXCL, int Mode = 0666);
+
+		int GetNamedSem(const char* Name, int Value,
+			int Flag = O_CREAT, int Mode = 0666);
+
+	public:
+
+		inline int DestroySem() { return sem_destroy(m_Sem); }
+		inline int UnlinkSem() { return sem_unlink(m_Name.c_str()); }
+
+		inline int SemWait() /* lock */ {return sem_wait(m_Sem); }
+		inline int SemPost() /* unlock */ { return sem_post(m_Sem); }
+
+	private:
+		sem_t* SemOpen(const char* Name, int Flag, int Mode, int Value);
+
+	private:
+		sem_t* m_Sem;
+		string m_Name;
+		bool m_Destroy;
 
 	};
 
