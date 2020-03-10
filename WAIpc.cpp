@@ -590,3 +590,36 @@ sem_t* WAIpcPOSIX::CWASemaphore::SemOpen(const char* Name, int Flag, int Mode, i
 {
 	return sem_open(Name, Flag, Mode, (unsigned)Value);
 }
+
+WAIpcPOSIX::CWAMQueue::CWAMQueue(bool Destroy) :
+	m_Id(-1), m_Name(""), m_Destroy(Destroy)
+{
+}
+
+WAIpcPOSIX::CWAMQueue::~CWAMQueue()
+{
+	CloseMQ();
+	if (m_Destroy) UnlinkMQ();
+}
+
+int WAIpcPOSIX::CWAMQueue::CreateMQ(const char* Name, int Flag, int Mode, mq_attr* Attr)
+{
+	m_Name = Name;
+	return mq_open(Name, Flag, Mode, Attr);
+}
+
+int WAIpcPOSIX::CWAMQueue::GetMQ(const char* Name, int Flag, int Mode, mq_attr* Attr)
+{
+	m_Name = Name;
+	return mq_open(Name, Flag, Mode, Attr);
+}
+
+int WAIpcPOSIX::CWAMQueue::CloseMQ()
+{
+	return mq_close(m_Id);
+}
+
+int WAIpcPOSIX::CWAMQueue::UnlinkMQ()
+{
+	return mq_unlink(m_Name.c_str());
+}

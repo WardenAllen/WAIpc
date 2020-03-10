@@ -217,10 +217,23 @@ namespace WAIpcPOSIX {
 	class CWAMQueue {
 
 	public:
-		CWAMQueue();
+		CWAMQueue(bool Destroy = false);
 		~CWAMQueue();
 
+	public:
+		int CreateMQ(const char* Name, int Flag = O_CREAT | O_EXCL | O_RDWR, 
+			int Mode = 0666, mq_attr *Attr = nullptr);
 
+		int GetMQ(const char* Name, int Flag = O_CREAT | O_RDWR,
+			int Mode = 0666, mq_attr* Attr = nullptr);
+
+		int CloseMQ();
+		int UnlinkMQ();
+
+	private:
+		int m_Id;
+		string m_Name;
+		bool m_Destroy;
 	};
 
 	class CWASemaphore {
