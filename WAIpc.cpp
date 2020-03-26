@@ -360,9 +360,9 @@ int WAIpcSystemV::CWASemaphoreArray::SemInit()
 /****************************************************************/
 
 
-WAIpcPOSIX::CWAMmap::CWAMmap(bool Destroy) :
+WAIpcPOSIX::CWAMmap::CWAMmap() :
 	m_Fd(-1), m_Len(0), m_Addr(nullptr), m_Name(""),
-	m_Destroy(Destroy)
+	m_Destroy(false)
 {
 }
 

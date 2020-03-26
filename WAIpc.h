@@ -175,7 +175,7 @@ namespace WAIpcPOSIX {
 	class CWAMmap {
 
 	public:
-		CWAMmap(bool Destroy = false);
+		CWAMmap();
 		~CWAMmap();
 
 	public:
@@ -204,6 +204,9 @@ namespace WAIpcPOSIX {
 
 	private:
 		int ShmOpen(const char* Name, int Flag);
+
+	public:
+		inline void SetDestroy(bool Destroy) { m_Destroy = Destroy; }
 
 	private:
 		int m_Fd;
